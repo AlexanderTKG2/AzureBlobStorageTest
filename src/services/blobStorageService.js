@@ -20,9 +20,12 @@ class BlobStorageService {
 
       const responseArray = [];
       for (const file of Files) {
-        const fileUrl = await this.uploadSingleFile(file, containerClient);
-        if (fileUrl) {
-          responseArray.push(fileUrl);
+        const fileUrlObject = await this.uploadSingleFile(
+          file,
+          containerClient
+        );
+        if (fileUrlObject) {
+          responseArray.push(fileUrlObject);
         }
       }
       res.status(200).json({ status: "Ok", data: responseArray });
@@ -41,8 +44,13 @@ class BlobStorageService {
 
       await blockClient.uploadData(file.buffer);
 
-      const fileUrl = new URL(remoteFileName, env.api.filesUrl).href;
-      return fileUrl;
+      const fileUrlAbsolute = blockClient.url;
+
+      const fileUrlRelative = new URL(remoteFileName, env.api.filesUrl).href;
+      return {
+        relativeUrl: fileUrlRelative,
+        absoluteUrl: fileUrlAbsolute,
+      };
     } catch (error) {
       return undefined;
     }
@@ -86,6 +94,28 @@ class BlobStorageService {
         .deleteIfExists();
 
       res.status(200).send({ status: "Ok" });
+    } catch (error) {
+      res.status(500).json({ status: "Server Error", error: error.message });
+    }
+  }
+
+  async getFileBufferData(req, res) {
+    try {
+      const fileName = req.params.filename;
+      const container = env.blobStorage.filesContainer;
+
+      if (!fileName) {
+        throw new Error("400: Filename not provided");
+      }
+
+      const containerClient = this.blobService.getContainerClient(container);
+      const blockBlobClient = await containerClient.getBlockBlobClient(
+        fileName
+      );
+
+      const fileBufferData = blockBlobClient.downloadToBuffer();
+
+      res.send(fileBufferData);
     } catch (error) {
       res.status(500).json({ status: "Server Error", error: error.message });
     }

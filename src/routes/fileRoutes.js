@@ -9,6 +9,10 @@ router.get("/:filename", (req, res) =>
   BlobStorageService.getDisplayFile(req, res)
 );
 
+router.get("/:filename/download", (req, res) =>
+  BlobStorageService.getFileBufferData(req, res)
+);
+
 router.post("/upload", upload.array("files"), (req, res) =>
   BlobStorageService.uploadFileArray(req, res)
 );
