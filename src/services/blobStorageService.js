@@ -1,5 +1,10 @@
 require("module-alias/register");
-const { BlobServiceClient } = require("@azure/storage-blob");
+const {
+  BlobServiceClient,
+  BlobSASPermissions,
+  StorageSharedKeyCredential,
+  generateBlobSASQueryParameters,
+} = require("@azure/storage-blob");
 const uuid = require("uuid");
 const env = require("@/src/config/env");
 
@@ -119,6 +124,34 @@ class BlobStorageService {
     } catch (error) {
       res.status(500).json({ status: "Server Error", error: error.message });
     }
+  }
+
+  generateBlobSASUpload(req, res) {
+    const fileId = uuid.v4();
+    const TTL = 300 * 1000; // 5 minutes
+    const NOW = new Date();
+    const sasOptions = {
+      containerName: env.blobStorage.filesContainer,
+      blobName: fileId,
+      startsOn: NOW,
+      expiresOn: new Date(NOW.valueOf() + TTL),
+      permissions: BlobSASPermissions.parse("c"),
+    };
+
+    const sasToken = generateBlobSASQueryParameters(
+      sasOptions,
+      this.blobService.credential
+    ).toString();
+    console.log(`SAS token for blob is: ${sasToken}`);
+    const container = env.blobStorage.filesContainer;
+    const containerClient = this.blobService.getContainerClient(container);
+    const generatedUrl = `${
+      containerClient.getBlockBlobClient(fileId).url
+    }?${sasToken}`;
+
+    res
+      .status(200)
+      .json({ url: generatedUrl, expires_in: TTL, fileId: fileId });
   }
 }
 

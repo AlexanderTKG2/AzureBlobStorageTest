@@ -5,6 +5,15 @@ const BlobStorageService = require("@/src/services/blobStorageService");
 
 const upload = multer();
 
+router.get("/generate-upload-url", (req, res) => {
+  res.header("Content-Type", "application/json");
+  try {
+    BlobStorageService.generateBlobSASUpload(req, res);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get("/:filename", (req, res) =>
   BlobStorageService.getDisplayFile(req, res)
 );
